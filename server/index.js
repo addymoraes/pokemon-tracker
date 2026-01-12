@@ -25,6 +25,9 @@ app.get('/cards/:id', (req, res) => {
 })
 
 app.post('/cards', (req, res) => {
+    if (!req.body.card || !req.body.type || !req.body.HP || !req.body.Rarity) {
+        return res.status(400).send('Missing card data')
+    }
     const newCard = {
         id: cards.length + 1,
         card: req.body.card,
@@ -48,6 +51,15 @@ app.delete('/cards/:id', (req, res) => {
 })
 
 app.put('/cards/:id', (req, res) => {
+    if (!req.body.card || !req.body.type || !req.body.HP || !req.body.Rarity) {
+        return res.status(400).send('Missing card data')
+    } 
+    if (typeof req.body.HP !== 'number' || req.body.HP <= 0) {
+        return res.status(400).send('HP must be a positive number')
+    }
+    if (typeof req.body.card !== 'string' || typeof req.body.type !== 'string' || typeof req.body.Rarity !== 'string') {
+        return res.status(400).send('Card, type, and Rarity must be strings')
+    }
     const id = parseInt(req.params.id);
     const index = cards.findIndex(card => card.id === id);
     if (index !== -1) {
@@ -58,10 +70,9 @@ app.put('/cards/:id', (req, res) => {
             HP: req.body.HP,
             Rarity: req.body.Rarity
         }
-        res.json(cards[index]);
-    } else {
-        res.status(404).send('Card not found');
+        return res.json(cards[index]);
     }
+    return res.status(404).send('Card not found');
 })
 
 app.patch('/cards/:id', (req, res) => {
