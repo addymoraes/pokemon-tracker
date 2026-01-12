@@ -75,17 +75,40 @@ app.put('/cards/:id', (req, res) => {
     return res.status(404).send('Card not found');
 })
 
-app.patch('/cards/:id', (req, res) => {
+app.patch('/cards/:id', (req, res) => {   
     const id = parseInt(req.params.id);
     const index = cards.findIndex(card => card.id === id);
     if (index !== -1) {
-        const card = cards[index];
-        const updatedCard = Object.assign(card, req.body);
-        cards[index] = updatedCard;
-        res.json(cards[index]);
-    } else {
-        res.status(404).send('Card not found');
+        if (Object.hasOwn(req.body, 'card')) {
+            if (typeof req.body.card !== 'string') {
+                return res.status(400).send('Card must be a string')
+            }
+            cards[index].card = req.body.card;
+        }
+
+        if (Object.hasOwn(req.body, 'type')) {
+            if (typeof req.body.type !== 'string') {
+                return res.status(400).send('Type must be a string')
+            }
+
+            cards[index].type = req.body.type;
+        }
+
+        if (Object.hasOwn(req.body, 'HP')) {
+            if (typeof req.body.HP !== 'number' || req.body.HP <= 0) {
+                return res.status(400).send('HP must be a positive number')
+            }
+            cards[index].HP = req.body.HP;
+        }
+        if (Object.hasOwn(req.body, 'Rarity')) {
+            if (typeof req.body.Rarity !== 'string') {
+                return res.status(400).send('Rarity must be a string')
+            }
+            cards[index].Rarity = req.body.Rarity;
+        }
+        return res.json(cards[index]);
     }
+    res.status(404).send('Card not found');
 })
 
 app.listen(port, () => {
