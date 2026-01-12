@@ -11,7 +11,20 @@ const cards = [
 ];
 
 app.get('/cards', (req, res) => {
-    res.json(cards)
+    let filteredCards = cards;
+    if (req.query.type) {
+        filteredCards = filteredCards.filter(card => card.type.toLowerCase() === req.query.type.toLowerCase());
+    }
+
+    if (req.query.minHP) {
+        filteredCards = filteredCards.filter(card => card.HP >= parseInt(req.query.minHP));
+    }
+
+    if (req.query.Rarity) {
+        filteredCards = filteredCards.filter(card => card.Rarity.toLowerCase() === req.query.Rarity.toLowerCase());
+    }
+
+    res.json(filteredCards);
 })
 
 app.get('/cards/:id', (req, res) => {
@@ -28,6 +41,15 @@ app.post('/cards', (req, res) => {
     if (!req.body.card || !req.body.type || !req.body.HP || !req.body.Rarity) {
         return res.status(400).send('Missing card data')
     }
+
+    if (typeof req.body.card !== 'string' || typeof req.body.type !== 'string' || typeof req.body.Rarity !== 'string') {
+        return res.status(400).send('Card, type, and Rarity must be strings')
+    }
+
+    if (typeof req.body.HP !== 'number' || req.body.HP <= 0) {
+        return res.status(400).send('HP must be a positive number')
+    }
+
     const newCard = {
         id: cards.length + 1,
         card: req.body.card,
@@ -35,8 +57,9 @@ app.post('/cards', (req, res) => {
         HP: req.body.HP,
         Rarity: req.body.Rarity
     }
+
     cards.push(newCard);
-    res.status(201).json(newCard);
+    return res.status(201).json(newCard);
 })
 
 app.delete('/cards/:id', (req, res) => {
