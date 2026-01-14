@@ -1,43 +1,35 @@
-const express = require('express');
+import express from 'express';
+import pool from './db.js';
 const app = express();
 const port = 3000;
 app.use(express.json());
 
-const cards = [
-    {"card": "Pikachu", "id": 1, "type": "Electric", "HP": 60, "Rarity": "SIR"},
-    {"card": "Charizard", "id": 2, "type": "Fire", "HP": 150, "Rarity": "IR"},
-    {"card": "Bulbasaur", "id": 3, "type": "Grass", "HP": 45, "Rarity": "Full Art"},
-    {"card": "Squirtle", "id": 4, "type": "Water", "HP": 50, "Rarity": "Holo"},
-];
-
-app.get('/cards', (req, res) => {
-    let filteredCards = cards;
-    if (req.query.type) {
-        filteredCards = filteredCards.filter(card => card.type.toLowerCase() === req.query.type.toLowerCase());
+app.get('/cards', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM cards ORDER BY id ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('DB error');
     }
-
-    if (req.query.minHP) {
-        filteredCards = filteredCards.filter(card => card.HP >= parseInt(req.query.minHP));
-    }
-
-    if (req.query.Rarity) {
-        filteredCards = filteredCards.filter(card => card.Rarity.toLowerCase() === req.query.Rarity.toLowerCase());
-    }
-
-    res.json(filteredCards);
 })
 
-app.get('/cards/:id', (req, res) => {
+app.get('/cards/:id', async (req, res) => {
     const id = parseInt(req.params.id);
-    const card = cards.find(card => card.id === id);
-    if (card) {
-        res.json(card);
-    } else {
-        res.status(404).send('Card not found');
+    try {
+        const result = await pool.query('SELECT * FROM cards WHERE id = $1', [id]);
+        if (result.rows.length > 0) {
+            res.json(result.rows[0]);
+        } else {
+            res.status(404).send('Card not found');
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('DB error');
     }
 })
 
-app.post('/cards', (req, res) => {
+app.post('/cards', async (req, res) => {
     if (!req.body.card || !req.body.type || !req.body.HP || !req.body.Rarity) {
         return res.status(400).send('Missing card data')
     }
@@ -50,30 +42,24 @@ app.post('/cards', (req, res) => {
         return res.status(400).send('HP must be a positive number')
     }
 
-    const newCard = {
-        id: cards.length + 1,
-        card: req.body.card,
-        type: req.body.type,
-        HP: req.body.HP,
-        Rarity: req.body.Rarity
-    }
+    const result = await pool.query(
+        'INSERT INTO cards (card, type, HP, Rarity) VALUES ($1, $2, $3, $4) RETURNING *',
+        [req.body.card, req.body.type, req.body.HP, req.body.Rarity]
+    );
 
-    cards.push(newCard);
-    return res.status(201).json(newCard);
+    res.status(201).json(result.rows[0]);
+    
 })
 
-app.delete('/cards/:id', (req, res) => {
+app.delete('/cards/:id', async (req, res) => {
     const id = parseInt(req.params.id);
-    const index = cards.findIndex(card => card.id === id);
-    if (index !== -1) {
-        cards.splice(index, 1);
-        res.status(204).send();
-    } else {
-        res.status(404).send('Card not found');
+    const result = await pool.query('DELETE FROM cards WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+        return res.status(404).send('Card not found');
     }
 })
 
-app.put('/cards/:id', (req, res) => {
+app.put('/cards/:id', async (req, res) => {
     if (!req.body.card || !req.body.type || !req.body.HP || !req.body.Rarity) {
         return res.status(400).send('Missing card data')
     } 
@@ -83,55 +69,70 @@ app.put('/cards/:id', (req, res) => {
     if (typeof req.body.card !== 'string' || typeof req.body.type !== 'string' || typeof req.body.Rarity !== 'string') {
         return res.status(400).send('Card, type, and Rarity must be strings')
     }
+
     const id = parseInt(req.params.id);
-    const index = cards.findIndex(card => card.id === id);
-    if (index !== -1) {
-        cards[index] = {
-            id: id,
-            card: req.body.card,
-            type: req.body.type,
-            HP: req.body.HP,
-            Rarity: req.body.Rarity
-        }
-        return res.json(cards[index]);
+    const result = await pool.query('UPDATE cards SET card = $1, type = $2, HP = $3, Rarity = $4 WHERE id = $5 RETURNING *',
+        [req.body.card, req.body.type, req.body.HP, req.body.Rarity, id]
+    );
+
+    if (result.rows.length > 0) {
+        return res.json(result.rows[0]);
     }
+
     return res.status(404).send('Card not found');
 })
 
-app.patch('/cards/:id', (req, res) => {   
+app.patch('/cards/:id', async (req, res) => {   
     const id = parseInt(req.params.id);
-    const index = cards.findIndex(card => card.id === id);
-    if (index !== -1) {
-        if (Object.hasOwn(req.body, 'card')) {
-            if (typeof req.body.card !== 'string') {
-                return res.status(400).send('Card must be a string')
-            }
-            cards[index].card = req.body.card;
-        }
+    const updates = [];
+    const values = [];
+    let index = 1;
 
-        if (Object.hasOwn(req.body, 'type')) {
-            if (typeof req.body.type !== 'string') {
-                return res.status(400).send('Type must be a string')
-            }
-
-            cards[index].type = req.body.type;
-        }
-
-        if (Object.hasOwn(req.body, 'HP')) {
-            if (typeof req.body.HP !== 'number' || req.body.HP <= 0) {
-                return res.status(400).send('HP must be a positive number')
-            }
-            cards[index].HP = req.body.HP;
-        }
-        if (Object.hasOwn(req.body, 'Rarity')) {
-            if (typeof req.body.Rarity !== 'string') {
-                return res.status(400).send('Rarity must be a string')
-            }
-            cards[index].Rarity = req.body.Rarity;
-        }
-        return res.json(cards[index]);
+    if (Object.hasOwn(req.body, 'card')) {
+        updates.push(`card = $${index++}`);
+        values.push(req.body.card);
     }
-    res.status(404).send('Card not found');
+
+    if (Object.hasOwn(req.body, 'type')) {
+        updates.push(`type = $${index++}`);
+        values.push(req.body.type);
+    }
+
+    if (Object.hasOwn(req.body, 'HP')) {
+        if (typeof req.body.HP !== 'number' || req.body.HP <= 0) {
+            return res.status(400).send('HP must be a positive number')
+        }
+        updates.push(`HP = $${index++}`);
+        values.push(req.body.HP);
+    }
+
+    if (Object.hasOwn(req.body, 'Rarity')) {
+        updates.push(`Rarity = $${index++}`);
+        values.push(req.body.Rarity);
+    }
+
+    if (updates.length === 0) {
+        return res.status(400).send('No valid fields to update');
+    }
+
+    values.push(id);
+
+    try {
+        const result = await pool.query(
+            `UPDATE cards SET ${updates.join(', ')} WHERE id = $${index} RETURNING *`,
+            values
+        );
+
+        if (result.rows.length > 0) {
+            return res.json(result.rows[0]);
+        }
+
+        return res.status(404).send('Card not found');
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('DB error');
+    }
 })
 
 app.listen(port, () => {
