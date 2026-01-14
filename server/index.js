@@ -57,6 +57,7 @@ app.delete('/cards/:id', async (req, res) => {
     if (result.rows.length === 0) {
         return res.status(404).send('Card not found');
     }
+    return res.status(204).send();
 })
 
 app.put('/cards/:id', async (req, res) => {
@@ -89,11 +90,19 @@ app.patch('/cards/:id', async (req, res) => {
     let index = 1;
 
     if (Object.hasOwn(req.body, 'card')) {
+        if (typeof req.body.card !== 'string' || req.body.card.trim() === '') {
+            return res.status(400).send('Card must be a string and cannot be empty')
+        }
+
         updates.push(`card = $${index++}`);
         values.push(req.body.card);
     }
 
     if (Object.hasOwn(req.body, 'type')) {
+        if (typeof req.body.type !== 'string' || req.body.type.trim() === '') {
+            return res.status(400).send('Type must be a string')
+        }
+
         updates.push(`type = $${index++}`);
         values.push(req.body.type);
     }
@@ -102,11 +111,16 @@ app.patch('/cards/:id', async (req, res) => {
         if (typeof req.body.HP !== 'number' || req.body.HP <= 0) {
             return res.status(400).send('HP must be a positive number')
         }
+
         updates.push(`HP = $${index++}`);
         values.push(req.body.HP);
     }
 
     if (Object.hasOwn(req.body, 'Rarity')) {
+        if (typeof req.body.Rarity !== 'string' || req.body.Rarity.trim() === '') {
+            return res.status(400).send('Rarity must be a string')
+        }
+
         updates.push(`Rarity = $${index++}`);
         values.push(req.body.Rarity);
     }
