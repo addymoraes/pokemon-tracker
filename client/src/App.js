@@ -12,7 +12,7 @@ function App() {
   }, []);
 
   return (
-    <div title>
+    <div className="App">
       <h1>Pokemon Card Tracker</h1>
 
       {cards.length === 0 ? (
@@ -23,8 +23,8 @@ function App() {
             <li key={card.id}>
               <h2>{card.card}</h2>
               <p>Type: {card.type}</p>
-              <p>HP: {card.hp}</p>
-              <p>Rarity: {card.rarity}</p>
+              <p>HP: {card.HP}</p>
+              <p>Rarity: {card.Rarity}</p>
             </li>
           ))}
         </ul>
