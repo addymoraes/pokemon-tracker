@@ -30,6 +30,7 @@ app.get('/cards/:id', async (req, res) => {
 })
 
 app.post('/cards', async (req, res) => {
+    
     if (!req.body.card || !req.body.type || !req.body.HP || !req.body.Rarity) {
         return res.status(400).send('Missing card data')
     }
@@ -42,12 +43,17 @@ app.post('/cards', async (req, res) => {
         return res.status(400).send('HP must be a positive number')
     }
 
-    const result = await pool.query(
-        'INSERT INTO cards (card, type, HP, Rarity) VALUES ($1, $2, $3, $4) RETURNING *',
-        [req.body.card, req.body.type, req.body.HP, req.body.Rarity]
-    );
+    try {
+        const result = await pool.query('INSERT INTO cards (card, type, HP, Rarity) VALUES ($1, $2, $3, $4) RETURNING *',
+            [req.body.card, req.body.type, req.body.HP, req.body.Rarity]
+        );
 
-    res.status(201).json(result.rows[0]);
+        res.status(201).json(result.rows[0]);
+        
+    } catch (err) {
+        console.error(err);
+        return res.status(500).send('DB error');
+    }
     
 })
 

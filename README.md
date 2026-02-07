@@ -2,7 +2,7 @@ Simple pokemon card API.
 
 Makes use of Node.JS and Express. Allows for CRUD functions with pokemon cards!
 
-install dependencies and start the server!
+install dependencies (npm install) and start the server (node index.js)!
 
 GET /cards - returns all cards
 
